@@ -1,30 +1,27 @@
-# Snake Game
+# Web Snake Game
 
-A classic Snake Game built using Python's built-in `turtle` module. It requires no external dependencies!
+This is a modern, HTML5/Canvas-based Snake Game, refactored from Python's Turtle module so it can be deployed and played on a cloud virtual machine via a web browser!
 
-## Prerequisites
+## Running locally
 
-- Python 3.x installed on your machine.
+Just open `web/index.html` in any modern browser!
 
-## How to Run
+## Deployment via GitHub Actions to GCP VM
 
-1. Clone this repository or download the files.
-2. Open your terminal or command prompt.
-3. Navigate to the folder containing `snake.py`.
-4. Run the script:
-   ```bash
-   python snake.py
-   ```
+This repository includes a pre-configured GitHub Actions workflow (`.github/workflows/deploy.yml`) that follows best practices by packaging the game as an Nginx Docker container and deploying it to a Google Cloud Platform (GCP) VM.
 
-## Controls
+### Prerequisites on GCP
+1. Create a Linux VM (Compute Engine).
+2. Ensure **Docker** and **Git** are installed on the VM (`sudo apt install docker.io git`).
+3. Add the VM user to the `docker` group (`sudo usermod -aG docker $USER`).
+4. Ensure your VM's firewall allows HTTP traffic on **Port 80**.
+5. Set up an SSH key pair (or use existing) to connect to the VM.
 
-- **W** or **Up Arrow**: Move Up
-- **S** or **Down Arrow**: Move Down
-- **A** or **Left Arrow**: Move Left
-- **D** or **Right Arrow**: Move Right
+### GitHub Secrets Configuration
+To make the pipeline work automatically when you push to `main`, go to the **Settings > Secrets and variables > Actions** tab of this repository and add the following secrets:
 
-## Gameplay
+- `GCP_VM_IP`: The external IP address of your VM.
+- `GCP_SSH_USER`: The username for the VM.
+- `GCP_SSH_KEY`: The **private** SSH key that corresponds to the public key authorized on the VM.
 
-- Eat the red food to grow your snake and increase your score.
-- Avoid hitting the walls or your own tail.
-- The game speeds up slightly as you eat more food!
+Once these secrets are configured, every commit to the `main` branch will automatically build and deploy the game to your server!
