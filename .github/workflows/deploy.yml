@@ -5,39 +5,46 @@ on:
     branches:
       - main
 
+# Required for Workload Identity Federation
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   deploy:
-    name: Deploy to GCP VM
+    name: Deploy to GCP VM via Workload Identity Federation
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Deploy to Server via SSH
-        uses: appleboy/ssh-action@v1.0.0
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
         with:
-          host: ${{ secrets.GCP_VM_IP }}
-          username: ${{ secrets.GCP_SSH_USER }}
-          key: ${{ secrets.GCP_SSH_KEY }}
-          script: |
-            # Create a directory for the app
-            mkdir -p ~/snakegame
-            
-            # This is a simplified deployment that pulls the latest code
-            cd ~/snakegame
-            if [ -d ".git" ]; then
-              git pull origin main
-            else
-              git clone https://github.com/${{ github.repository }}.git .
-            fi
-            
-            # Stop any existing container
-            docker stop web-snake || true
-            docker rm web-snake || true
-            
-            # Build the new image
-            docker build -t web-snake:latest .
-            
-            # Run the container on port 80
-            docker run -d --name web-snake -p 80:80 web-snake:latest
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to VM via gcloud ssh
+        run: |
+          gcloud compute ssh ${{ secrets.GCP_VM_NAME }} \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --zone=${{ secrets.GCP_VM_ZONE }} \
+            --tunnel-through-iap \
+            --command="
+              mkdir -p ~/snakegame &&
+              cd ~/snakegame &&
+              if [ -d '.git' ]; then
+                git pull origin main
+              else
+                git clone https://github.com/${{ github.repository }}.git .
+              fi &&
+              sudo docker stop web-snake || true &&
+              sudo docker rm web-snake || true &&
+              sudo docker build -t web-snake:latest . &&
+              sudo docker run -d --name web-snake -p 80:80 web-snake:latest
+            "
